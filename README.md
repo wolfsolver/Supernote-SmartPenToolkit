@@ -10,6 +10,8 @@ This plugin is used to remove scribbles from the note and in future many other s
 - [ ] add scribble to circle
 - [ ] add scribble to triangle
 - [ ] add scribble to arrow
-- [ ] add setting page
-- [ ] rename to Scribble2Action
+- [X] add setting page
+  - [ ] Setup margin for scribble area
+  - [ ] improve switch
+- [ ] rename to SmartPenToolkit
 

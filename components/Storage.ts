@@ -13,7 +13,7 @@ export const getDirPath = async () => {
     const path = await PluginManager.getPluginDirPath();
 
     if (!path) {
-      console.error('[SUDOKU/Storage]: Plugin directory path is null or undefined');
+      console.error('[../Storage]: Plugin directory path is null or undefined');
       return null;
     }
 
@@ -21,7 +21,7 @@ export const getDirPath = async () => {
     const finalPath = typeof path === 'object' ? (path as any).path || path.toString() : path;
     return finalPath;
   } catch (e) {
-    console.error('[SUDOKU/Storage]: Error getting plugin directory path', e);
+    console.error('[../Storage]: Error getting plugin directory path', e);
     return null;
   }
 };
@@ -40,9 +40,9 @@ export const saveSettings = async (settings: object) => {
     }
 
     await RNFS.writeFile(filePath, JSON.stringify(settings), 'utf8');
-    console.log('[SUDOKU/Storage]: Settings saved successfully to', filePath);
+    console.log('[../Storage]: Settings saved');
   } catch (error) {
-    console.error('[SUDOKU/Storage]: Save operation failed', error);
+    console.error('[../Storage]: Save failed', error);
   }
 };
 
@@ -59,7 +59,7 @@ export const loadSettings = async () => {
       return JSON.parse(content);
     }
   } catch (error) {
-    console.error('[SUDOKU/Storage]: Load operation failed', error);
+    console.error('[../Storage]: Load failed', error);
   }
   return null;
 };
@@ -81,15 +81,15 @@ export const saveStringToLocalFile = async (object: string, filename: string) =>
     await saveStringTo(filePath, object)
 
   } catch (error) {
-    console.error('[Storage]: Save operation failed', error);
+    console.error('[../Storage]: Save failed', error);
   }
 };
 
 export const saveStringTo = async (object: string, filename: string) => {
   try {
     await RNFS.writeFile(filename, object, 'utf8');
-    console.log('[Storage]: Saved successfully to', filename);
+    console.log('[../Storage]: Saved');
   } catch (error) {
-    console.error('[Storage]: Save operation failed', error);
+    console.error('[../Storage]: Save failed', error);
   }
 };

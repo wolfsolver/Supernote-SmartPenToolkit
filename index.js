@@ -1,91 +1,99 @@
-import { AppRegistry } from 'react-native';
+import { AppRegistry, DeviceEventEmitter } from 'react-native';
 import { PluginManager, PluginFileAPI, PluginCommAPI } from 'sn-plugin-lib';
 import App from './App';
 import { name as appName } from './app.json';
-import { getDirPath, saveStringTo } from './components/Storage.ts';
+import { getDirPath, saveStringTo, loadSettings } from './components/Storage.ts';
 
 AppRegistry.registerComponent(appName, () => App);
 PluginManager.init();
 
-const PADDING = 15;
+PluginManager.registerConfigButton();
+PluginManager.registerConfigButtonListener({
+  onClick() {
+    DeviceEventEmitter.emit('openSettings');
+  },
+});
+
 const MARGIN = 100;
+
+const DEFAULT_SETTINGS = {
+  scribbleToDelete: true,
+  scribbleToSquare: false,
+  scribbleToCircle: false,
+  scribbleToTriangle: false,
+  scribbleToEllipse: false,
+  scribbleToArrow: false,
+};
 
 let lastProcessedUuid = null;
 
+
 PluginManager.registerEventListener('event_pen_up', 1, {
   async onMsg(msg) {
-    const elements = msg; // [cite: 5]
+    const elements = msg;
     if (!elements || elements.length === 0) return;
     const new_uuid = elements[0].uuid;
     if (new_uuid === lastProcessedUuid) {
-      //		console.log("[UNDO-LOG] duble fired.. ignore.");
       return;
     }
     lastProcessedUuid = new_uuid;
 
+    // Load settings to check which features are enabled
+    const savedSettings = await loadSettings();
+    const settings = savedSettings ? { ...DEFAULT_SETTINGS, ...savedSettings } : DEFAULT_SETTINGS;
+    console.log(`[UNDO-LOG/0] Settings: ${JSON.stringify(settings)}`);
     console.log(`[UNDO-LOG/1] Pen up. Analyzing ${elements.length} new elements...`);
-    //    console.log(`[UNDO-LOG] elements = ${JSON.stringify(elements)}`);
-
-    saveStringTo(JSON.stringify(elements), '/sdcard/elements.json');
 
     for (const el of elements) {
-      console.log(`[UNDO-LOG/2] ${el.uuid} of type ${el.type}`);
-      // Check if it's a stroke (TYPE_STROKE = 0) [cite: 5]
       if (el.type === 0 && el.stroke) {
 
-        const isScribble = await analyzeScribble(el.stroke);
+        if (settings.scribbleToDelete) {
+          const isScribble = await analyzeScribble(el.stroke);
 
-        if (!isScribble) {
-          console.log(`[UNDO-LOG/3a] (UUID: ${el.uuid}) is not a Scribble`);
-        } else {
-          console.log(`[UNDO-LOG/3b] Scribble confirmed (UUID: ${el.uuid}). Searching for elements to delete...`);
-          console.log(`[UNDO-LOG/3c] Getting path`);
-          const pathRes = await PluginCommAPI.getCurrentFilePath();
-          console.log(`[UNDO-LOG/3d] pathRes ${pathRes.result}. Getting elements`);
-          const pageRes = await PluginFileAPI.getElements(el.pageNum, pathRes.result);
-          // console.log(`[UNDO-LOG/4] element on page ${JSON.stringify(pageRes)}`);
-          saveStringTo(JSON.stringify(pageRes), '/sdcard/pageRes.json');
-          console.log(`[UNDO-LOG/4] element on page read`);
+          if (isScribble) {
+            console.log(`[UNDO-LOG/3b] Scribble confirmed (UUID: ${el.uuid})`);
 
-          if (!pageRes.success) {
-            console.log('[UNDO-LOG/6a] pageRes result emptyu');
-          } else {
-            const scribbleArea = await getElementBounds(el);
-            // saveStringTo(JSON.stringify(scribbleArea), '/sdcard/scribbleArea.json');
-            console.log(`[UNDO-LOG/5] scribbleArea ${JSON.stringify(scribbleArea)}`);
-
-            let removedCount = 0;
-            console.log(`[UNDO-LOG/6b] element on page ${pageRes.result.length}`);
-            for (const target of pageRes.result) {
-              console.log('[UNDO-LOG/7] Element', target.uuid, 'found');
-              if (target.uuid === el.uuid) {
-                console.log('[UNDO-LOG/8] Element', target.uuid, 'is scrible');
-                continue;
-              }
-              // We need to verify the bounds.
-              // target has its own contours (contoursSrc) which are arrays of arrays of points
-              // from which we derive the bounding box.
-              const targetArea = await getElementBounds(target);
-
-              // Bounding Box collision check [cite: 5]
-              if (checkOverlap(scribbleArea, targetArea)) {
-                console.log('[UNDO-LOG/9] Element', target.uuid, 'will be removed');
-
-                // Release native cache and remove the element 
-                delete_element(target.uuid); // 
-                removedCount++;
+            if (settings.scribbleToDelete) {
+              console.log(`[UNDO-LOG/Delete] Feature enabled. Searching for elements to delete...`);
+              const pathRes = await PluginCommAPI.getCurrentFilePath();
+              // Fix for pathRes possible null/undefined
+              if (pathRes && pathRes.success && pathRes.result) {
+                const pageRes = await PluginFileAPI.getElements(el.pageNum, pathRes.result);
+                if (pageRes && pageRes.success && pageRes.result) {
+                  const scribbleArea = await getElementBounds(el);
+                  let removedCount = 0;
+                  for (const target of pageRes.result) {
+                    if (target.uuid === el.uuid) continue;
+                    const targetArea = await getElementBounds(target);
+                    if (checkOverlap(scribbleArea, targetArea)) {
+                      delete_element(target.uuid);
+                      removedCount++;
+                    }
+                  }
+                  // Remove the scribble itself 
+                  delete_element(el.uuid);
+                  console.log(`[UNDO-LOG/Delete] Removed ${removedCount} elements.`);
+                }
+              } else {
+                console.error('[UNDO-LOG/Delete] Failed to get current file path or path is empty');
               }
             }
-
-            // Remove the scribble itself to leave no trace 
-            delete_element(el.uuid);
-
-            // add new element just for testing. 
-            insertGeometryFromArea(scribbleArea);
-            insertLineFromArea(scribbleArea);
-
-            console.log(`[UNDO-LOG/A] Success: Removed ${removedCount} elements and cleaned up the scribble.`);
           }
+        }
+        if (settings.scribbleToSquare) {
+          console.log('[UNDO-LOG/Square] Feature enabled. (NOT YET IMPLEMENTED)');
+        }
+        if (settings.scribbleToCircle) {
+          console.log('[UNDO-LOG/Circle] Feature enabled. (NOT YET IMPLEMENTED)');
+        }
+        if (settings.scribbleToTriangle) {
+          console.log('[UNDO-LOG/Triangle] Feature enabled. (NOT YET IMPLEMENTED)');
+        }
+        if (settings.scribbleToEllipse) {
+          console.log('[UNDO-LOG/Ellipse] Feature enabled. (NOT YET IMPLEMENTED)');
+        }
+        if (settings.scribbleToArrow) {
+          console.log('[UNDO-LOG/Arrow] Feature enabled. (NOT YET IMPLEMENTED)');
         }
       }
     }
@@ -106,15 +114,9 @@ async function analyzeScribble(stroke) {
   const pointsAccessor = stroke.points;
   const size = await pointsAccessor.size();
 
-  console.log(`[UNDO-LOG/analyzeScribble] Analyzing ${size} pointsAccessor`);
-
-  // A significant scribble has many points
   if (size < 30) return false;
 
   const points = await pointsAccessor.getRange(0, size);
-
-  console.log(`[UNDO-LOG/analyzeScribble] Analyzing ${points.length} points`);
-  // saveStringTo(JSON.stringify(points), '/sdcard/points1.json');
 
   let xInversions = 0;
   let yInversions = 0;
@@ -123,57 +125,43 @@ async function analyzeScribble(stroke) {
   let minX = points[0].x, maxX = points[0].x;
   let minY = points[0].y, maxY = points[0].y;
 
-  // use for for performance and memory protection
-  // start from 1 to avoid double counting
   for (let i = 1; i < points.length; i++) {
     const curr = points[i];
 
-    // Bounding Box update
     if (curr.x < minX) minX = curr.x;
     if (curr.x > maxX) maxX = curr.x;
     if (curr.y < minY) minY = curr.y;
     if (curr.y > maxY) maxY = curr.y;
 
     const prev = points[i - 1];
-    // Calculate distance traveled
     totalDistance += Math.sqrt(Math.pow(curr.x - prev.x, 2) + Math.pow(curr.y - prev.y, 2));
 
     if (i >= 2) {
       const prev = points[i - 1];
       const pPrev = points[i - 2];
-      // X-axis inversions
       if (Math.sign(curr.x - prev.x) !== Math.sign(prev.x - pPrev.x) && Math.abs(curr.x - prev.x) > 2) {
         xInversions++;
       }
-      // Y-axis inversions
       if (Math.sign(curr.y - prev.y) !== Math.sign(prev.y - pPrev.y) && Math.abs(curr.y - prev.y) > 2) {
         yInversions++;
       }
     }
   }
 
-  // Bounding Box size calculation
   const width = maxX - minX;
   const height = maxY - minY;
   const areaDiagonal = Math.sqrt(width * width + height * height);
 
-  // IDENTIFICATION LOGIC:
-  // 1. Many total inversions
-  // 2. The total distance traveled is much larger than the diagonal of the occupied area
   const isDense = totalDistance > areaDiagonal * 3;
   const hasEnoughJiggles = (xInversions + yInversions) > 10;
-
-  console.log(`[UNDO-LOG/analyzeScribble] Analysis: Inversions(X:${xInversions}, Y:${yInversions}), Density:${(totalDistance / areaDiagonal).toFixed(2)}`);
 
   return isDense && hasEnoughJiggles;
 }
 
 async function getElementBounds(el) {
-  const size = await el.stroke.points.size(); // [cite: 3, 4]
-  const points = await el.stroke.points.getRange(0, size); // [cite: 3, 4]
-  //  saveStringTo(JSON.stringify(points), '/sdcard/points2.json');
+  const size = await el.stroke.points.size();
+  const points = await el.stroke.points.getRange(0, size);
 
-  // Use for-loop for performance and memory protection
   let minX = points[0].x, minY = points[0].y;
   let maxX = points[0].x, maxY = points[0].y;
   points.forEach(p => {
@@ -183,18 +171,10 @@ async function getElementBounds(el) {
     if (p.y > maxY) maxY = p.y;
   });
 
-  return {
-    minX: minX,
-    minY: minY,
-    maxX: maxX,
-    maxY: maxY
-  };
+  return { minX, minY, maxX, maxY };
 }
 
 function checkOverlap(scribble, target) {
-  // Quick comparison between bounding boxes [cite: 5]
-  //  console.log(`[UNDO-LOG/checkOverlap] scribble ${JSON.stringify(scribble)}`);
-  //  console.log(`[UNDO-LOG/checkOverlap] target ${JSON.stringify(target)}`);
   return (
     target.minX >= (scribble.minX - MARGIN) &&
     target.maxX <= (scribble.maxX + MARGIN) &&
@@ -210,11 +190,11 @@ async function insertGeometryFromArea(area) {
     penWidth: 2,
     type: 'GEO_polygon',
     points: [
-      { x: area.minX, y: area.minY }, // Top-left
-      { x: area.maxX, y: area.minY }, // Top-right
-      { x: area.maxX, y: area.maxY }, // Bottom-right
-      { x: area.minX, y: area.maxY }, // Bottom-left
-      { x: area.minX, y: area.minY }  // Back to start to close path 
+      { x: area.minX, y: area.minY },
+      { x: area.maxX, y: area.minY },
+      { x: area.maxX, y: area.maxY },
+      { x: area.minX, y: area.maxY },
+      { x: area.minX, y: area.minY }
     ],
     ellipseCenterPoint: null,
     ellipseMajorAxisRadius: 0,
@@ -236,8 +216,8 @@ async function insertLineFromArea(area) {
     penWidth: 2,
     type: 'straightLine',
     points: [
-      { x: area.minX, y: area.minY + 10 }, // Top-left
-      { x: area.maxX, y: area.minY + 10 }, // Top-right
+      { x: area.minX, y: area.minY + 10 },
+      { x: area.maxX, y: area.minY + 10 },
     ],
     ellipseCenterPoint: null,
     ellipseMajorAxisRadius: 0,
