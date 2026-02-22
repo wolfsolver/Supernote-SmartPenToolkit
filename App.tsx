@@ -30,11 +30,11 @@ interface Settings {
 
 const DEFAULT_SETTINGS: Settings = {
   scribbleToDelete: true,
-  scribbleToSquare: false,
-  scribbleToCircle: false,
-  scribbleToTriangle: false,
-  scribbleToEllipse: false,
-  scribbleToArrow: false,
+  scribbleToSquare: true,
+  scribbleToCircle: true,
+  scribbleToTriangle: true,
+  scribbleToEllipse: true,
+  scribbleToArrow: true,
 };
 
 function App(): React.JSX.Element {
