@@ -1,0 +1,1 @@
+﻿components/Storage.ts(21,77): error TS2339: Property 'toString' does not exist on type 'never'.
