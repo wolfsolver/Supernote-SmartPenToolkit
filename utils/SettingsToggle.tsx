@@ -4,10 +4,15 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 interface SettingsToggleProps {
     label: string;
     value: boolean;
+    disabled?: boolean
     onToggle: () => void;
 }
 
-const SettingsToggle: React.FC<SettingsToggleProps> = ({ label, value, onToggle }) => {
+const SettingsToggle: React.FC<SettingsToggleProps> = ({
+    label,
+    value,
+    disabled = false,
+    onToggle }) => {
     return (
         <View style={styles.container}>
             <Text style={styles.label}>{label}</Text>
@@ -16,8 +21,11 @@ const SettingsToggle: React.FC<SettingsToggleProps> = ({ label, value, onToggle 
                 <Text style={styles.statusText}>{value ? 'ON' : 'OFF'}</Text>
 
                 <Pressable
-                    style={[styles.switch, value ? styles.switchOn : styles.switchOff]}
+                    style={[styles.switch,
+                    value ? styles.switchOn : styles.switchOff,
+                    disabled && styles.switchDisabled]}
                     onPress={onToggle}
+                    disabled={disabled}
                 >
                     <View style={[
                         styles.handle,
@@ -48,6 +56,9 @@ const styles = StyleSheet.create({
     },
     switchOn: { backgroundColor: '#000' }, // Supernote style (Black/White)
     switchOff: { backgroundColor: '#ccc' },
+    switchDisabled: {
+        backgroundColor: '#d0d0d0',
+    },
     handle: {
         width: 21,
         height: 21,

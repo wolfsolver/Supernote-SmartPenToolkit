@@ -89,7 +89,8 @@ const Main = ({ onClose }: SettingProps) => {
                             if (insertRes?.success) {
                                 log('App', `Element ${i + 1}/${elements.length} (${shape.type}) converted successfully.`);
                                 // Delete the original hand-drawn stroke
-                                // TODO: Replace with new api when ready: await PluginCommAPI.recycleElement(el.uuid);
+                                // Todo collet i into array and move deleteElements outside for for better performance.
+                                PluginFileAPI.deleteElements(filePath, pageNum, [i]);
                                 convertedCount++;
                                 setStats(s => ({ ...s, converted: convertedCount }));
                             } else {

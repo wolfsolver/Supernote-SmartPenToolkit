@@ -43,52 +43,71 @@ PluginManager.registerEventListener('event_pen_up', 1, {
     }
     lastProcessedUuid = new_uuid;
 
-    console.log(`[UNDO-LOG/0] Settings: ${JSON.stringify(settings)}`);
-    console.log(`[UNDO-LOG/1] Pen up. Analyzing ${elements.length} new elements...`);
+    log("index", `Settings: ${JSON.stringify(settings)}`);
+    log("index", `Pen up. Analyzing ${elements.length} new elements...`);
+
+    const itemToDelete = [];
 
     for (const el of elements) {
       if (el.type === 0 && el.stroke) {
 
         if (settings.scribbleToDelete) {
-          console.log('[UNDO-LOG/Delete] Feature enabled. Analyzing scribble...');
+          log("index/delete", 'Feature enabled. Analyzing scribble...');
 
           const isScribble = await analyzeScribble(el.stroke);
 
           if (isScribble) {
-            console.log(`[UNDO-LOG/3b] Scribble confirmed (UUID: ${el.uuid})`);
+            log("index/delete", `Scribble CONFIRMED (UUID: ${el.uuid})`);
 
             if (settings.scribbleToDelete) {
-              console.log(`[UNDO-LOG/Delete] Feature enabled. Searching for elements to delete...`);
+              log("index/delete", `Feature enabled. Searching for elements to delete...`);
               const pathRes = await PluginCommAPI.getCurrentFilePath();
               // Fix for pathRes possible null/undefined
               if (pathRes && pathRes.success && pathRes.result) {
                 const pageRes = await PluginFileAPI.getElements(el.pageNum, pathRes.result);
                 if (pageRes && pageRes.success && pageRes.result) {
+                  log("index/delete", `Found ${pageRes.result.length} elements on page ${el.pageNum}`);
                   const scribbleArea = await getElementBounds(el);
+                  log("index/delete", `Scribble area: ${JSON.stringify(scribbleArea)}`);
                   let removedCount = 0;
-                  for (const target of pageRes.result) {
-                    if (target.uuid === el.uuid) continue;
-                    const targetArea = await getElementBounds(target);
-                    if (checkOverlap(scribbleArea, targetArea)) {
-                      delete_element(target.uuid);
-                      removedCount++;
+                  for (let indexToDelete = 0; indexToDelete < pageRes.result.length; indexToDelete++) {
+                    const target = pageRes.result[indexToDelete];
+                    log("index/delete", `Analizze item ${indexToDelete} with uuid ${target.uuid}`)
+                    if (target.uuid === el.uuid) {
+                      // tis is the scribble itself, we will delete 
+                      log("index/delete", `Item ${indexToDelete} is the scribble itself`);
+                      itemToDelete.push(indexToDelete);
+                    } else {
+                      const targetArea = await getElementBounds(target);
+                      log("index/delete", `Item ${indexToDelete} area: ${JSON.stringify(targetArea)}`);
+                      if (checkOverlap(scribbleArea, targetArea)) {
+                        log("index/delete", `Item ${indexToDelete} overlaps with the scribble`);
+                        itemToDelete.push(indexToDelete);
+                        removedCount++;
+                      }
                     }
                   }
-                  // Remove the scribble itself 
-                  delete_element(el.uuid);
-                  console.log(`[UNDO-LOG/Delete] Removed ${removedCount} elements.`);
+                  // Remove all elements that overlap with the scribble including the scribble itself
+                  log("index/delete", `Removing ${JSON.stringify(itemToDelete)} elements.`);
+                  const res = await PluginFileAPI.deleteElements(pathRes.result, el.pageNum, itemToDelete);
+                  log("index/delete", `res: ${JSON.stringify(res)}`);
+                  if (res?.success) {
+                    log("index/delete", `Removed ${itemToDelete.length} elements.`);
+                  } else {
+                    log("index/delete", `Failed to remove elements`);
+                  }
                 }
               } else {
-                console.error('[UNDO-LOG/Delete] Failed to get current file path or path is empty');
+                log("index/delete", `Failed to get current file path or path is empty`);
               }
             }
           }
         }
+
         if (settings.scribbleToSquare) {
           console.log('[UNDO-LOG/Square] Feature enabled. (NOT YET IMPLEMENTED)');
           // test
-          insertGeometryFromArea(400, 400, 800, 700);
-
+          //          insertGeometryFromArea(400, 400, 800, 700);
         }
         if (settings.scribbleToCircle) {
           console.log('[UNDO-LOG/Circle] Feature enabled. (NOT YET IMPLEMENTED)');
@@ -107,15 +126,6 @@ PluginManager.registerEventListener('event_pen_up', 1, {
     console.log(`[UNDO-LOG/Z] Pen up. End of analysis ${new_uuid}`);
   },
 });
-
-async function delete_element(uuid) {
-  const res = await PluginCommAPI.recycleElement(uuid);
-  if (!res.success) {
-    throw new Error(res.error?.message ?? 'delete_element call failed');
-  }
-  console.log(`[UNDO-LOG/delete_element] Element ${uuid} deleted`);
-  return res.result;
-}
 
 async function analyzeScribble(stroke) {
   const pointsAccessor = stroke.points;

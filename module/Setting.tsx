@@ -80,6 +80,7 @@ const Setting = ({ onClose }: SettingProps) => {
           <SettingsToggle
             label="Recognize scribble to delete"
             value={localSettings.scribbleToDelete}
+            disabled={!localSettings.scribbleWhenPenUp}
             onToggle={() => setLocalSettings(prev => ({ ...prev, scribbleToDelete: !prev.scribbleToDelete }))}
           />
         </View>
@@ -87,6 +88,7 @@ const Setting = ({ onClose }: SettingProps) => {
           <SettingsToggle
             label="Recognize scribble to rectangle"
             value={localSettings.scribbleToRectangle}
+            disabled={true}
             onToggle={() => setLocalSettings(prev => ({ ...prev, scribbleToRectangle: !prev.scribbleToRectangle }))}
           />
         </View>
@@ -94,6 +96,7 @@ const Setting = ({ onClose }: SettingProps) => {
           <SettingsToggle
             label="Recognize scribble to circle"
             value={localSettings.scribbleToCircle}
+            disabled={true}
             onToggle={() => setLocalSettings(prev => ({ ...prev, scribbleToCircle: !prev.scribbleToCircle }))}
           />
         </View>
@@ -101,6 +104,7 @@ const Setting = ({ onClose }: SettingProps) => {
           <SettingsToggle
             label="Recognize scribble to triangle"
             value={localSettings.scribbleToTriangle}
+            disabled={true}
             onToggle={() => setLocalSettings(prev => ({ ...prev, scribbleToTriangle: !prev.scribbleToTriangle }))}
           />
         </View>
@@ -108,6 +112,7 @@ const Setting = ({ onClose }: SettingProps) => {
           <SettingsToggle
             label="Recognize scribble to ellipse"
             value={localSettings.scribbleToEllipse}
+            disabled={true}
             onToggle={() => setLocalSettings(prev => ({ ...prev, scribbleToEllipse: !prev.scribbleToEllipse }))}
           />
         </View>
@@ -115,6 +120,7 @@ const Setting = ({ onClose }: SettingProps) => {
           <SettingsToggle
             label="Recognize scribble to arrow"
             value={localSettings.scribbleToArrow}
+            disabled={true}
             onToggle={() => setLocalSettings(prev => ({ ...prev, scribbleToArrow: !prev.scribbleToArrow }))}
           />
         </View>
