@@ -21,6 +21,8 @@ import { useSettings } from './utils/SettingContext';
 import { log } from './utils/ConsoleLog';
 import config from './app.json';
 import Box from "./module/Box";
+import { PluginFileAPI, PluginCommAPI } from 'sn-plugin-lib';
+
 
 /**
  * Plugin View
@@ -48,7 +50,30 @@ function AppContent(): React.JSX.Element {
       setMainKey(prev => prev + 1);
       setCurrentView('main');
     }
+    if (event.id === 101) {
+      log('App', "event for Test");
+
+      test();
+
+    }
   };
+
+  const test = async () => {
+    // delete element 1 from currint page
+    const pathRes = await PluginCommAPI.getCurrentFilePath() as any;
+    const pageRes = await PluginCommAPI.getCurrentPageNum() as any;
+    log('App/Test', "pathRes: " + JSON.stringify(pathRes));
+    log('App/Test', "pageRes: " + JSON.stringify(pageRes));
+    const elementRes = await PluginFileAPI.getElements(pageRes.result, pathRes.result) as any;
+    for (let i = 0; i < elementRes.result.length; i++) {
+      log("App/Test", "  elementRes[" + i + "].numInPage: " + elementRes.result[i].numInPage);
+    }
+    const numsInPage = [elementRes.result[0].numInPage];
+    log("App/Test", "numsInPage: " + JSON.stringify(numsInPage));
+    const deleteRes = await PluginFileAPI.deleteElements(pathRes.result, pageRes.result, numsInPage);
+    log('App/Test', "deleteRes: " + JSON.stringify(deleteRes));
+    handleClose();
+  }
 
   useEffect(() => {
     // Process any buffered events when loading finishes

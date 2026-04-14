@@ -15,6 +15,13 @@ PluginManager.registerButton(1, ['NOTE'], {
   showType: 1,
 });
 
+//PluginManager.registerButton(1, ['NOTE'], {
+//  id: 101,
+//  name: 'SmartPenToolkit Test',
+//  icon: Image.resolveAssetSource(require('./assets/smartpentoolkit.jpg')).uri,
+//  showType: 1,
+//});
+
 PluginManager.registerConfigButton();
 
 const MARGIN = 100;
@@ -25,16 +32,7 @@ let lastProcessedUuid = null;
 
 PluginManager.registerEventListener('event_pen_up', 1, {
   async onMsg(msg) {
-    log("index", "pen up event received");
-    // Load settings to check which features are enabled
-    const savedSettings = await loadSettings();
-    const settings = savedSettings ? { ...DEFAULT_SETTINGS, ...savedSettings } : DEFAULT_SETTINGS;
-    if (!settings.scribbleWhenPenUp) {
-      log("index", "scribbleWhenPenUp is false");
-      return;
-    }
-    log("index", "scribbleWhenPenUp is true");
-
+    const timestamp = performance.now();
     const elements = msg;
     if (!elements || elements.length === 0) return;
     const new_uuid = elements[0].uuid;
@@ -43,87 +41,94 @@ PluginManager.registerEventListener('event_pen_up', 1, {
     }
     lastProcessedUuid = new_uuid;
 
-    log("index", `Settings: ${JSON.stringify(settings)}`);
-    log("index", `Pen up. Analyzing ${elements.length} new elements...`);
+    //   log("index-" + timestamp, "pen up event received");
+    // Load settings to check which features are enabled
+    const savedSettings = await loadSettings();
+    const settings = savedSettings ? { ...DEFAULT_SETTINGS, ...savedSettings } : DEFAULT_SETTINGS;
+    if (!settings.scribbleWhenPenUp) {
+      log("index-" + timestamp, "scribbleWhenPenUp is false");
+      return;
+    }
+    log("index-" + timestamp, "scribbleWhenPenUp is true");
+
+    log("index-" + timestamp, "pen up event received " + new_uuid);
+
+    //    log("index", `Settings: ${JSON.stringify(settings)}`);
+    //    log("index", `Pen up. Analyzing ${elements.length} new elements...`);
 
     const itemToDelete = [];
 
     for (const el of elements) {
+      log("index-" + timestamp, "el.numInPage: " + el.numInPage);
       if (el.type === 0 && el.stroke) {
-
+        log("index-" + timestamp, "  is stroke");
         if (settings.scribbleToDelete) {
-          log("index/delete", 'Feature enabled. Analyzing scribble...');
+          log("index-" + timestamp, '  Feature enabled. Analyzing to see if is a scribble...');
 
           const isScribble = await analyzeScribble(el.stroke);
 
           if (isScribble) {
-            log("index/delete", `Scribble CONFIRMED (UUID: ${el.uuid})`);
+            log("index-" + timestamp, "  Scribble confirmed.");
 
-            if (settings.scribbleToDelete) {
-              log("index/delete", `Feature enabled. Searching for elements to delete...`);
-              const pathRes = await PluginCommAPI.getCurrentFilePath();
-              // Fix for pathRes possible null/undefined
-              if (pathRes && pathRes.success && pathRes.result) {
-                const pageRes = await PluginFileAPI.getElements(el.pageNum, pathRes.result);
-                if (pageRes && pageRes.success && pageRes.result) {
-                  log("index/delete", `Found ${pageRes.result.length} elements on page ${el.pageNum}`);
-                  const scribbleArea = await getElementBounds(el);
-                  log("index/delete", `Scribble area: ${JSON.stringify(scribbleArea)}`);
-                  let removedCount = 0;
-                  for (let indexToDelete = 0; indexToDelete < pageRes.result.length; indexToDelete++) {
-                    const target = pageRes.result[indexToDelete];
-                    log("index/delete", `Analizze item ${indexToDelete} with uuid ${target.uuid}`)
-                    if (target.uuid === el.uuid) {
-                      // tis is the scribble itself, we will delete 
-                      log("index/delete", `Item ${indexToDelete} is the scribble itself`);
-                      itemToDelete.push(indexToDelete);
-                    } else {
-                      const targetArea = await getElementBounds(target);
-                      log("index/delete", `Item ${indexToDelete} area: ${JSON.stringify(targetArea)}`);
-                      if (checkOverlap(scribbleArea, targetArea)) {
-                        log("index/delete", `Item ${indexToDelete} overlaps with the scribble`);
-                        itemToDelete.push(indexToDelete);
-                        removedCount++;
-                      }
+            const pathRes = await PluginCommAPI.getCurrentFilePath();
+            // Fix for pathRes possible null/undefined
+            if (pathRes && pathRes.success && pathRes.result) {
+              const pageRes = await PluginFileAPI.getElements(el.pageNum, pathRes.result);
+              if (pageRes && pageRes.success && pageRes.result) {
+                log("index-" + timestamp, `Found ${pageRes.result.length} elements on page ${el.pageNum}`);
+                const scribbleArea = await getElementBounds(el);
+                //                log("index/delete", `Scribble area: ${JSON.stringify(scribbleArea)}`);
+                let removedCount = 0;
+                for (let indexToDelete = 0; indexToDelete < pageRes.result.length; indexToDelete++) {
+                  const target = pageRes.result[indexToDelete];
+                  log("index-" + timestamp, `  Analizze item ${indexToDelete} with numInPage ${target.numInPage}`)
+                  if (target.uuid === el.uuid) {
+                    // tis is the scribble itself, we will delete 
+                    log("index-" + timestamp, `  Item ${indexToDelete} is the scribble itself`);
+                    itemToDelete.push(target.numInPage);
+                  } else {
+                    const targetArea = await getElementBounds(target);
+                    log("index-" + timestamp, `  Item ${indexToDelete} area: ${JSON.stringify(targetArea)}`);
+                    if (checkOverlap(scribbleArea, targetArea)) {
+                      log("index-" + timestamp, `  Item ${indexToDelete} overlaps with the scribble`);
+                      itemToDelete.push(target.numInPage);
+                      removedCount++;
                     }
                   }
-                  // Remove all elements that overlap with the scribble including the scribble itself
-                  log("index/delete", `Removing ${JSON.stringify(itemToDelete)} elements.`);
-                  const res = await PluginFileAPI.deleteElements(pathRes.result, el.pageNum, itemToDelete);
-                  log("index/delete", `res: ${JSON.stringify(res)}`);
-                  if (res?.success) {
-                    log("index/delete", `Removed ${itemToDelete.length} elements.`);
-                  } else {
-                    log("index/delete", `Failed to remove elements`);
-                  }
                 }
-              } else {
-                log("index/delete", `Failed to get current file path or path is empty`);
+                // Remove all elements that overlap with the scribble including the scribble itself
+                log("index-" + timestamp, `Removing ${JSON.stringify(itemToDelete)} elements.`);
+                const res = await PluginFileAPI.deleteElements(pathRes.result, el.pageNum, itemToDelete);
+                log("index-" + timestamp, `res: ${JSON.stringify(res)}`);
+                if (res?.success) {
+                  log("index-" + timestamp, `Removed ${itemToDelete.length} elements.`);
+                } else {
+                  log("index-" + timestamp, `Failed to remove elements`);
+                }
               }
+            } else {
+              log("index-" + timestamp, `Failed to get current file path or path is empty`);
             }
           }
         }
-
         if (settings.scribbleToSquare) {
-          console.log('[UNDO-LOG/Square] Feature enabled. (NOT YET IMPLEMENTED)');
-          // test
-          //          insertGeometryFromArea(400, 400, 800, 700);
+          log("index/square", 'Feature enabled. (NOT YET IMPLEMENTED)');
         }
         if (settings.scribbleToCircle) {
-          console.log('[UNDO-LOG/Circle] Feature enabled. (NOT YET IMPLEMENTED)');
+          log("index/circle", 'Feature enabled. (NOT YET IMPLEMENTED)');
         }
         if (settings.scribbleToTriangle) {
-          console.log('[UNDO-LOG/Triangle] Feature enabled. (NOT YET IMPLEMENTED)');
+          log("index/triangle", 'Feature enabled. (NOT YET IMPLEMENTED)');
         }
         if (settings.scribbleToEllipse) {
-          console.log('[UNDO-LOG/Ellipse] Feature enabled. (NOT YET IMPLEMENTED)');
+          log("index/ellipse", 'Feature enabled. (NOT YET IMPLEMENTED)');
         }
         if (settings.scribbleToArrow) {
-          console.log('[UNDO-LOG/Arrow] Feature enabled. (NOT YET IMPLEMENTED)');
+          log("index/arrow", 'Feature enabled. (NOT YET IMPLEMENTED)');
         }
       }
     }
-    console.log(`[UNDO-LOG/Z] Pen up. End of analysis ${new_uuid}`);
+    log("index-" + timestamp, `Pen up. End of analysis ${new_uuid}`);
   },
 });
 
