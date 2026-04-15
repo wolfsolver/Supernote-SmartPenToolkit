@@ -21,11 +21,13 @@ This plugin is used to remove scribbles from the note and in future many other s
 
 ## Preview
 
-| About | Config | Video |
-| :---: | :---: | :---: |
-| <img src="/screenshot/Supernote-SmartPenToolkit-plugin-image.png" alt="Image" width="200"/> | <img src="/screenshot/Supernote-SmartPenToolkit-plugin-config.png" alt="config" width="200"/>
- | <video width="320" controls><source src="/screenshot/Supernote-SmartPenToolkit.mp4" type="video/mp4"></video> |
+| About | Config |
+| :---: | :---: | 
+| <img src="/screenshot/Supernote-SmartPenToolkit-plugin-image.png" alt="Image" width="300"/> | <img src="/screenshot/Supernote-SmartPenToolkit-plugin-config.png" alt="config" width="300"/> | 
 
+<video width="320" controls>
+  <source src="/screenshot/Supernote-SmartPenToolkit.mp4" type="video/mp4">
+</video>
 
 ## Build
 
