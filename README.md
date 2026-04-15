@@ -31,6 +31,8 @@ This plugin is used to remove scribbles from the note and in future many other s
 
 video
 
+https://1drv.ms/v/c/6958bccc4c47c1d3/IQCiyhDPEsV7RLJGct_KOjXLAeNJaeDT6AqvtycHxpfDnKA?e=rE8IBa
+
 https://raw.githubusercontent.com/wolfsolver/Supernote-SmartPenToolkit/refs/heads/main/screenshot/Supernote-SmartPenToolkit.mp4
 
 ## Build
