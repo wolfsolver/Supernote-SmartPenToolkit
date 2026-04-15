@@ -29,16 +29,23 @@ const MARGIN = 100;
 import { DEFAULT_SETTINGS } from './config/defaultSettings.ts';
 
 let lastProcessedUuid = null;
+let timestamp = null;
 
 PluginManager.registerEventListener('event_pen_up', 1, {
   async onMsg(msg) {
-    const timestamp = performance.now();
+    timestamp = performance.now();
+    log("index-" + timestamp, "Pen is up");
     const elements = msg;
-    if (!elements || elements.length === 0) return;
-    const new_uuid = elements[0].uuid;
-    if (new_uuid === lastProcessedUuid) {
+    if (!elements || elements.length === 0) {
+      //      log("index-" + timestamp, "no data");
       return;
     }
+    const new_uuid = elements[0].uuid;
+    if (new_uuid === lastProcessedUuid) {
+      //      log("index-" + timestamp, "Double event on " + new_uuid);
+      return;
+    }
+    log("index-" + timestamp, "Process event on " + new_uuid);
     lastProcessedUuid = new_uuid;
 
     //   log("index-" + timestamp, "pen up event received");
@@ -46,15 +53,10 @@ PluginManager.registerEventListener('event_pen_up', 1, {
     const savedSettings = await loadSettings();
     const settings = savedSettings ? { ...DEFAULT_SETTINGS, ...savedSettings } : DEFAULT_SETTINGS;
     if (!settings.scribbleWhenPenUp) {
-      log("index-" + timestamp, "scribbleWhenPenUp is false");
+      // log("index-" + timestamp, "scribbleWhenPenUp is false");
       return;
     }
     log("index-" + timestamp, "scribbleWhenPenUp is true");
-
-    log("index-" + timestamp, "pen up event received " + new_uuid);
-
-    //    log("index", `Settings: ${JSON.stringify(settings)}`);
-    //    log("index", `Pen up. Analyzing ${elements.length} new elements...`);
 
     const itemToDelete = [];
 
@@ -68,7 +70,7 @@ PluginManager.registerEventListener('event_pen_up', 1, {
           const isScribble = await analyzeScribble(el.stroke);
 
           if (isScribble) {
-            log("index-" + timestamp, "  Scribble confirmed.");
+            log("index-" + timestamp, "  Scribble confirmed numInPage: " + el.numInPage);
 
             const pathRes = await PluginCommAPI.getCurrentFilePath();
             // Fix for pathRes possible null/undefined
@@ -79,18 +81,22 @@ PluginManager.registerEventListener('event_pen_up', 1, {
                 const scribbleArea = await getElementBounds(el);
                 //                log("index/delete", `Scribble area: ${JSON.stringify(scribbleArea)}`);
                 let removedCount = 0;
-                for (let indexToDelete = 0; indexToDelete < pageRes.result.length; indexToDelete++) {
-                  const target = pageRes.result[indexToDelete];
-                  log("index-" + timestamp, `  Analizze item ${indexToDelete} with numInPage ${target.numInPage}`)
-                  if (target.uuid === el.uuid) {
+                for (let indexToAnalize = 0; indexToAnalize < pageRes.result.length; indexToAnalize++) {
+                  const target = pageRes.result[indexToAnalize];
+                  log("index-" + timestamp, `  Analysing item ${indexToAnalize} with numInPage ${target.numInPage}`)
+                  if (target.uuid === el.uuid || target.numInPage === el.numInPage) {
                     // tis is the scribble itself, we will delete 
-                    log("index-" + timestamp, `  Item ${indexToDelete} is the scribble itself`);
+                    log("index-" + timestamp, `  Item is the scribble itself`);
+                    log("index-" + timestamp, `    target.uuid ${target.uuid}`);
+                    log("index-" + timestamp, `    el.uuid     ${el.uuid}`);
+                    log("index-" + timestamp, `    target.numInPage ${target.numInPage}`);
+                    log("index-" + timestamp, `    el.numInPage     ${el.numInPage}`);
                     itemToDelete.push(target.numInPage);
                   } else {
                     const targetArea = await getElementBounds(target);
-                    log("index-" + timestamp, `  Item ${indexToDelete} area: ${JSON.stringify(targetArea)}`);
+                    log("index-" + timestamp, `  Item ${indexToAnalize} area: ${JSON.stringify(targetArea)}`);
                     if (checkOverlap(scribbleArea, targetArea)) {
-                      log("index-" + timestamp, `  Item ${indexToDelete} overlaps with the scribble`);
+                      log("index-" + timestamp, `  Item ${indexToAnalize} overlaps with the scribble`);
                       itemToDelete.push(target.numInPage);
                       removedCount++;
                     }
@@ -177,7 +183,15 @@ async function analyzeScribble(stroke) {
   const isDense = totalDistance > areaDiagonal * 3;
   const hasEnoughJiggles = (xInversions + yInversions) > 10;
 
-  return isDense && hasEnoughJiggles;
+  const isScribble = isDense && hasEnoughJiggles
+  log("index-" + timestamp, `    isScribble=${isScribble}`);
+  log("index-" + timestamp, `    isScribble: isDense=${isDense}`);
+  log("index-" + timestamp, `      isScribble: totalDistance=${totalDistance}`);
+  log("index-" + timestamp, `      isScribble: areaDiagonal=${areaDiagonal}`);
+  log("index-" + timestamp, `    isScribble: hasEnoughJiggles=${hasEnoughJiggles}`);
+  log("index-" + timestamp, `      isScribble: xInversions=${xInversions}`);
+  log("index-" + timestamp, `      isScribble: yInversions=${yInversions}`);
+  return isScribble;
 }
 
 async function getElementBounds(el) {
