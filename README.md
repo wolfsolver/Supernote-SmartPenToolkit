@@ -1,5 +1,10 @@
 # Scribble Plugin
 
+>[!CAUTION]
+> This tool is technically designed to **erase the writing underneath your scribbles**. However, being an unstable Alpha, it occasionally suffers from an "**omnipotence complex**" and decides the entire page is a mistake.
+> When running it, for now, you should be prepared: there's a non-zero chance the program will take offense and erase the entire page instead of just the stroke. This isn't a bug, it's an aggressive **artistic reboot**.
+> **Proceed with caution (and don't get too attached to your current masterpiece).**
+
 ## Description
 
 This plugin is used to remove scribbles from the note and in future many other sign like square and circle.
@@ -18,20 +23,15 @@ This plugin is used to remove scribbles from the note and in future many other s
 - [ ] add #__________ to create keywords
 - [X] rename to SmartPenToolkit
 
-
 ## Preview
 
 | About | Config |
 | :---: | :---: | 
 | <img src="/screenshot/Supernote-SmartPenToolkit-plugin-image.png" alt="Image" width="300"/> | <img src="/screenshot/Supernote-SmartPenToolkit-plugin-config.png" alt="config" width="300"/> | 
 
-video 1
-https://github.com/wolfsolver/Supernote-SmartPenToolkit/raw/refs/heads/main/screenshot/Supernote-SmartPenToolkit.mp4
+video
 
-video 1
-<video width="320" controls>
-  <source src="https://github.com/wolfsolver/Supernote-SmartPenToolkit/raw/refs/heads/main/screenshot/Supernote-SmartPenToolkit.mp4" type="video/mp4">
-</video>
+https://raw.githubusercontent.com/wolfsolver/Supernote-SmartPenToolkit/refs/heads/main/screenshot/Supernote-SmartPenToolkit.mp4
 
 ## Build
 
